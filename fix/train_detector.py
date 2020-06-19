@@ -10,6 +10,7 @@ from tensorboardX import SummaryWriter
 import shutil
 import numpy as np
 from tqdm.autonotebook import tqdm
+import wandb
 
 
 class Detector():
@@ -190,11 +191,20 @@ class Detector():
                         continue
                 self.system_dict["local"]["scheduler"].step(np.mean(epoch_loss))
 
+                # ======================
+                # wandb
+                # ======================
+                wandb.log({
+                    "Train cls loss": cls_loss,
+                    "Train reg loss": reg_loss})
+
+
                 if epoch % self.system_dict["params"]["val_interval"] == 0:
 
                     self.system_dict["local"]["model"].eval()
                     loss_regression_ls = []
                     loss_classification_ls = []
+                    
                     for iter, data in enumerate(self.system_dict["local"]["test_generator"]):
                         with torch.no_grad():
                             if torch.cuda.is_available():
@@ -219,6 +229,16 @@ class Detector():
                     writer.add_scalar('Val/Total_loss', loss, epoch)
                     writer.add_scalar('Val/Regression_loss', reg_loss, epoch)
                     writer.add_scalar('Val/Classfication_loss (focal loss)', cls_loss, epoch)
+
+                    # ======================
+                    # wandb
+                    # ======================
+                    wandb.log({
+                        "Test cls loss": cls_loss,
+                        "Test reg loss": reg_loss})
+
+
+
 
                     if loss + self.system_dict["params"]["es_min_delta"] < self.system_dict["output"]["best_loss"]:
                         self.system_dict["output"]["best_loss"] = loss
